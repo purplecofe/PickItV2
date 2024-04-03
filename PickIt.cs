@@ -27,8 +27,9 @@ namespace PickIt;
 
 public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 {
-    private readonly TimeCache<List<LabelOnGround>> _chestLabels;
+    private readonly CachedValue<List<LabelOnGround>> _chestLabels;
     private readonly CachedValue<LabelOnGround> _portalLabel;
+    private readonly CachedValue<List<LabelOnGround>> _corpseLabels;
     private readonly CachedValue<bool[,]> _inventorySlotsCache;
     private ServerInventory _inventoryItems;
     private SyncTask<bool> _pickUpTask;
@@ -42,6 +43,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         Name = "PickIt With Linq";
         _inventorySlotsCache = new FrameCache<bool[,]>(() => GetContainer2DArray(_inventoryItems));
         _chestLabels = new TimeCache<List<LabelOnGround>>(UpdateChestList, 200);
+        _corpseLabels = new TimeCache<List<LabelOnGround>>(UpdateCorpseList, 200);
         _portalLabel = new TimeCache<LabelOnGround>(() => GetLabel(@"^Metadata/(MiscellaneousObjects|Effects/Microtransactions)/.*Portal"), 200);
     }
 
@@ -181,6 +183,14 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                          path.StartsWith("Metadata/Chests/Breach/", StringComparison.Ordinal) ||
                          path.StartsWith("Metadata/Chests/IncursionChest", StringComparison.Ordinal)) &&
                         x.ItemOnGround.HasComponent<Chest>())
+            .OrderBy(x => x.ItemOnGround.DistancePlayer)
+            .ToList();
+
+    private List<LabelOnGround> UpdateCorpseList() =>
+        GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible
+            .Where(x => x.Address != 0 &&
+                        x.IsVisible &&
+                        x.ItemOnGround?.Path is "Metadata/Terrain/Leagues/Necropolis/Objects/NecropolisCorpseMarker")
             .OrderBy(x => x.ItemOnGround.DistancePlayer)
             .ToList();
 
@@ -400,7 +410,20 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
                 if (chestLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer))
                 {
-                    await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, true);
+                    await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, _chestLabels.ForceUpdate);
+                    return true;
+                }
+            }
+
+            if (Settings.ItemizeCorpses)
+            {
+                var corpseLabel = _corpseLabels?.Value.FirstOrDefault(x =>
+                    x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
+                    IsLabelClickable(x.Label, null));
+
+                if (corpseLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= corpseLabel.ItemOnGround.DistancePlayer))
+                {
+                    await PickAsync(corpseLabel.ItemOnGround, corpseLabel.Label?.GetChildFromIndices(0, 2, 1), null, _corpseLabels.ForceUpdate);
                     return true;
                 }
             }
@@ -411,7 +434,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             }
 
             pickUpThisItem.AttemptedPickups++;
-            await PickAsync(pickUpThisItem.QueriedItem.Entity, pickUpThisItem.QueriedItem.Label, pickUpThisItem.QueriedItem.ClientRect, false);
+            await PickAsync(pickUpThisItem.QueriedItem.Entity, pickUpThisItem.QueriedItem.Label, pickUpThisItem.QueriedItem.ClientRect, () => {});
         }
 
         return true;
@@ -433,18 +456,14 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             .ToList() ?? [];
     }
 
-    private async SyncTask<bool> PickAsync(Entity item, Element label, RectangleF? customRect, bool isChest)
+    private async SyncTask<bool> PickAsync(Entity item, Element label, RectangleF? customRect, Action onNonClickable)
     {
         var tryCount = 0;
         while (tryCount < 3)
         {
             if (!IsLabelClickable(label, customRect))
             {
-                if (isChest)
-                {
-                    _chestLabels.ForceUpdate();
-                }
-
+                onNonClickable();
                 return true;
             }
 
@@ -457,14 +476,14 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             var position = label.GetClientRect().ClickRandomNum(5, 3) + GameController.Window.GetWindowRectangleTimeCache.TopLeft.ToVector2Num();
             if (_sinceLastClick.ElapsedMilliseconds > Settings.PauseBetweenClicks)
             {
-                if (!IsTargeted(item))
+                if (!IsTargeted(item, label))
                 {
-                    await SetCursorPositionAsync(position, item);
+                    await SetCursorPositionAsync(position, item, label);
                 }
                 else
                 {
                     if (await CheckPortal(label)) return true;
-                    if (!IsTargeted(item))
+                    if (!IsTargeted(item, label))
                     {
                         await TaskUtils.NextFrame();
                         continue;
@@ -495,16 +514,22 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         return IsPortalTargeted(_portalLabel.Value);
     }
 
-    private static bool IsTargeted(Entity item)
+    private static bool IsTargeted(Entity item, Element label)
     {
-        return item?.GetComponent<Targetable>()?.isTargeted == true;
+        if(item == null) return false;
+        if (item.GetComponent<Targetable>() is { isTargeted : true })
+        {
+            return true;
+        }
+
+        return label is { HasShinyHighlight: true };
     }
 
-    private static async SyncTask<bool> SetCursorPositionAsync(Vector2 position, Entity item)
+    private static async SyncTask<bool> SetCursorPositionAsync(Vector2 position, Entity item, Element label)
     {
         DebugWindow.LogMsg($"Set cursor pos: {position}");
         Input.SetCursorPos(position);
-        return await TaskUtils.CheckEveryFrame(() => IsTargeted(item), new CancellationTokenSource(60).Token);
+        return await TaskUtils.CheckEveryFrame(() => IsTargeted(item, label), new CancellationTokenSource(60).Token);
     }
 
     #endregion

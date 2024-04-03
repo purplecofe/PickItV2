@@ -14,37 +14,52 @@ public partial class PickIt
         return FindSpotInventory(groundItem) != null;
     }
 
+    private bool CanFitInventory(int itemHeight, int itemWidth)
+    {
+        return FindSpotInventory(itemHeight, itemWidth) != null;
+    }
+
+        const int width = 12;
+        const int height = 5;
     /// <summary>
     /// Finds a spot available in the inventory to place the item
     /// </summary>
     private Vector2? FindSpotInventory(ItemData item)
     {
-        var inventorySlots = InventorySlots;
         var inventoryItems = _inventoryItems.InventorySlotItems;
-        const int width = 12;
-        const int height = 5;
-
-        if (inventorySlots == null)
-            return null;
-
         var itemToStackWith = inventoryItems.FirstOrDefault(x => CanItemBeStacked(item, x));
         if (itemToStackWith != null)
         {
             return new Vector2(itemToStackWith.PosX, itemToStackWith.PosY);
         }
 
-        for (var yCol = 0; yCol < height - (item.Height - 1); yCol++)
-        for (var xRow = 0; xRow < width - (item.Width - 1); xRow++)
+        var itemHeight = item.Height;
+        var itemWidth = item.Width;
+        return FindSpotInventory(itemHeight, itemWidth);
+    }
+
+    private Vector2? FindSpotInventory(int itemHeight, int itemWidth)
+    {
+        bool[,] inventorySlots = InventorySlots;
+        if (inventorySlots == null)
         {
-            var obstructed = false;
+            return null;
+        }
 
-            for (var xWidth = 0; xWidth < item.Width && !obstructed; xWidth++)
-            for (var yHeight = 0; yHeight < item.Height && !obstructed; yHeight++)
+        for (var yCol = 0; yCol < height - (itemHeight - 1); yCol++)
+        {
+            for (var xRow = 0; xRow < width - (itemWidth - 1); xRow++)
             {
-                obstructed |= inventorySlots[yCol + yHeight, xRow + xWidth];
-            }
+                var obstructed = false;
 
-            if (!obstructed) return new Vector2(xRow, yCol);
+                for (var xWidth = 0; xWidth < itemWidth && !obstructed; xWidth++)
+                for (var yHeight = 0; yHeight < itemHeight && !obstructed; yHeight++)
+                {
+                    obstructed |= inventorySlots[yCol + yHeight, xRow + xWidth];
+                }
+
+                if (!obstructed) return new Vector2(xRow, yCol);
+            }
         }
 
         return null;
