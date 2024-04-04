@@ -517,9 +517,9 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     private static bool IsTargeted(Entity item, Element label)
     {
         if(item == null) return false;
-        if (item.GetComponent<Targetable>() is { isTargeted : true })
+        if (item.GetComponent<Targetable>()?.isTargeted is {} isTargeted)
         {
-            return true;
+            return isTargeted;
         }
 
         return label is { HasShinyHighlight: true };
