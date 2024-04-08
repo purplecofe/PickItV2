@@ -172,27 +172,51 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         return Settings.PickUpEverything || (_itemFilters?.Any(filter => filter.Matches(item)) ?? false);
     }
 
-    private List<LabelOnGround> UpdateChestList() =>
-        GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible
-            .Where(x => x.Address != 0 &&
-                        x.IsVisible &&
-                        x.ItemOnGround?.Path is { } path &&
-                        (path.StartsWith("Metadata/Chests/LeaguesExpedition/", StringComparison.Ordinal) ||
-                         path.StartsWith("Metadata/Chests/LegionChests/", StringComparison.Ordinal) ||
-                         path.StartsWith("Metadata/Chests/Blight", StringComparison.Ordinal) ||
-                         path.StartsWith("Metadata/Chests/Breach/", StringComparison.Ordinal) ||
-                         path.StartsWith("Metadata/Chests/IncursionChest", StringComparison.Ordinal)) &&
-                        x.ItemOnGround.HasComponent<Chest>())
-            .OrderBy(x => x.ItemOnGround.DistancePlayer)
-            .ToList();
+    private List<LabelOnGround> UpdateChestList()
+    {
+        bool IsFittingEntity(Entity entity)
+        {
+            return entity?.Path is { } path &&
+                   (path.StartsWith("Metadata/Chests/LeaguesExpedition/", StringComparison.Ordinal) ||
+                    path.StartsWith("Metadata/Chests/LegionChests/", StringComparison.Ordinal) ||
+                    path.StartsWith("Metadata/Chests/Blight", StringComparison.Ordinal) ||
+                    path.StartsWith("Metadata/Chests/Breach/", StringComparison.Ordinal) ||
+                    path.StartsWith("Metadata/Chests/IncursionChest", StringComparison.Ordinal)) &&
+                   entity.HasComponent<Chest>();
+        }
 
-    private List<LabelOnGround> UpdateCorpseList() =>
-        GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible
-            .Where(x => x.Address != 0 &&
-                        x.IsVisible &&
-                        x.ItemOnGround?.Path is "Metadata/Terrain/Leagues/Necropolis/Objects/NecropolisCorpseMarker")
-            .OrderBy(x => x.ItemOnGround.DistancePlayer)
-            .ToList();
+        if (GameController.EntityListWrapper.OnlyValidEntities.Any(IsFittingEntity))
+        {
+            return GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible
+                .Where(x => x.Address != 0 &&
+                            x.IsVisible &&
+                            IsFittingEntity(x.ItemOnGround))
+                .OrderBy(x => x.ItemOnGround.DistancePlayer)
+                .ToList() ?? [];
+        }
+
+        return [];
+    }
+
+    private List<LabelOnGround> UpdateCorpseList()
+    {
+        bool IsFittingEntity(Entity entity)
+        {
+            return entity?.Path is "Metadata/Terrain/Leagues/Necropolis/Objects/NecropolisCorpseMarker";
+        }
+
+        if (GameController.EntityListWrapper.OnlyValidEntities.Any(IsFittingEntity))
+        {
+            return GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible
+                .Where(x => x.Address != 0 &&
+                            x.IsVisible &&
+                            IsFittingEntity(x.ItemOnGround))
+                .OrderBy(x => x.ItemOnGround.DistancePlayer)
+                .ToList() ?? [];
+        }
+
+        return [];
+    }
 
     private bool CanLazyLoot()
     {
@@ -402,6 +426,19 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         var workMode = GetWorkMode();
         if (workMode == WorkMode.Manual || workMode == WorkMode.Lazy && ShouldLazyLoot(pickUpThisItem))
         {
+            if (Settings.ItemizeCorpses)
+            {
+                var corpseLabel = _corpseLabels?.Value.FirstOrDefault(x =>
+                    x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
+                    IsLabelClickable(x.Label, null));
+
+                if (corpseLabel != null)
+                {
+                    await PickAsync(corpseLabel.ItemOnGround, corpseLabel.Label?.GetChildFromIndices(0, 2, 1), null, _corpseLabels.ForceUpdate);
+                    return true;
+                }
+            }
+
             if (Settings.ClickChests)
             {
                 var chestLabel = _chestLabels?.Value.FirstOrDefault(x =>
@@ -411,19 +448,6 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                 if (chestLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer))
                 {
                     await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, _chestLabels.ForceUpdate);
-                    return true;
-                }
-            }
-
-            if (Settings.ItemizeCorpses)
-            {
-                var corpseLabel = _corpseLabels?.Value.FirstOrDefault(x =>
-                    x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
-                    IsLabelClickable(x.Label, null));
-
-                if (corpseLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= corpseLabel.ItemOnGround.DistancePlayer))
-                {
-                    await PickAsync(corpseLabel.ItemOnGround, corpseLabel.Label?.GetChildFromIndices(0, 2, 1), null, _corpseLabels.ForceUpdate);
                     return true;
                 }
             }
