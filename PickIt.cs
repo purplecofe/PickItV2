@@ -466,22 +466,22 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     }
 
     private List<PickItItemData> GetItemsToPickup(bool filterAttempts)
-   {
-       var window = GameController.Window.GetWindowRectangleTimeCache with { Location = SDxVector2.Zero };
-       var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
-       return labels?
-           .Where(x => x.Entity?.Path != null
-                       && x.Entity.DistancePlayer < Settings.PickupRange)
-                       && x.Label.IsVisible
-                       && window.Contains(x.ClientRect.Center)
-           .Select(x => new PickItItemData(x, GameController))
-           .Where(x => x.Entity != null
-                       && (!filterAttempts || x.AttemptedPickups == 0)
-                       && IsLabelClickable(x.QueriedItem.Label, x.QueriedItem.ClientRect)
-                       && DoWePickThis(x)
-                       && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x)))
-           .ToList() ?? [];
-   }
+    {
+        var window = GameController.Window.GetWindowRectangleTimeCache with { Location = SDxVector2.Zero };
+        var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
+        return labels?
+            .Where(x => x.Entity?.Path != null
+                        && x.Label.IsVisible
+                        && window.Contains(x.ClientRect.Center)
+                        && x.Entity.DistancePlayer < Settings.PickupRange)
+            .Select(x => new PickItItemData(x, GameController))
+            .Where(x => x.Entity != null
+                        && (!filterAttempts || x.AttemptedPickups == 0)
+                        && IsLabelClickable(x.QueriedItem.Label, x.QueriedItem.ClientRect)
+                        && DoWePickThis(x)
+                        && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x)))
+            .ToList() ?? [];
+    }
 
     private async SyncTask<bool> PickAsync(Entity item, Element label, RectangleF? customRect, Action onNonClickable)
     {
