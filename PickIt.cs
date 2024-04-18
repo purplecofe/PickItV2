@@ -470,12 +470,12 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         var window = GameController.Window.GetWindowRectangleTimeCache with { Location = SDxVector2.Zero };
         var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
         return labels?
-            .Where(x => x.Entity?.Path != null && x.Label.IsVisible && window.Contains(x.ClientRect.Center))
+            .Where(x => x.Entity?.Path != null
+                        && IsLabelClickable(x.Label, x.ClientRect)
+                        && x.Entity.DistancePlayer < Settings.PickupRange)
             .Select(x => new PickItItemData(x, GameController))
             .Where(x => x.Entity != null
                         && (!filterAttempts || x.AttemptedPickups == 0)
-                        && x.Distance < Settings.PickupRange
-                        && IsLabelClickable(x.QueriedItem.Label, x.QueriedItem.ClientRect)
                         && DoWePickThis(x)
                         && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x)))
             .ToList() ?? [];
