@@ -471,7 +471,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
         return labels?
             .Where(x => x.Entity?.Path != null
-                        && IsLabelClickable(x.Label, null)
+                        && IsLabelClickable(x.Label, x.ClientRect)
                         && x.Entity.DistancePlayer < Settings.PickupRange)
             .Select(x => new PickItItemData(x, GameController))
             .Where(x => x.Entity != null
