@@ -52,7 +52,10 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         #region Register keys
 
         Settings.PickUpKey.OnValueChanged += () => Input.RegisterKey(Settings.PickUpKey);
+        Settings.ProfilerHotkey.OnValueChanged += () => Input.RegisterKey(Settings.ProfilerHotkey);
+
         Input.RegisterKey(Settings.PickUpKey);
+        Input.RegisterKey(Settings.ProfilerHotkey);
         Input.RegisterKey(Keys.Escape);
 
         #endregion
@@ -80,6 +83,22 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         {
             _pluginBridgeModeOverride = false;
             return WorkMode.Stop;
+        }
+
+        if (Input.GetKeyState(Settings.ProfilerHotkey.Value))
+        {
+            // keep for juice checking
+            var Stopwatch = new Stopwatch();
+            Stopwatch.Start();
+            var looseVar = GetItemsToPickup(false);
+            Stopwatch.Stop();
+            LogMessage($"GetItemsToPickup Elapsed Time: {Stopwatch.ElapsedTicks} Item: {looseVar[0].BaseName} Distance: {looseVar[0].Distance}");
+
+            Stopwatch = new Stopwatch();
+            Stopwatch.Start();
+            var looseVar2 = GetItemsToPickupFast(false);
+            Stopwatch.Stop();
+            LogMessage($"GetItemsToPickupFast Elapsed Time: {Stopwatch.ElapsedTicks} Item: {looseVar2[0].BaseName} Distance: {looseVar2[0].Distance}");
         }
 
         if (Input.GetKeyState(Settings.PickUpKey.Value) || _pluginBridgeModeOverride)
@@ -422,7 +441,10 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     private async SyncTask<bool> RunPickerIterationAsync()
     {
         if (!GameController.Window.IsForeground()) return true;
-        var pickUpThisItem = GetItemsToPickup(true).MinBy(x => x.Distance);
+
+        var pickUpThisItem = Settings.InsideOutSearch
+            ? GetItemsToPickupFast(true).MinBy(x => x.Distance)
+            : GetItemsToPickup(true).MinBy(x => x.Distance);
 
         var workMode = GetWorkMode();
         if (workMode == WorkMode.Manual || workMode == WorkMode.Lazy && ShouldLazyLoot(pickUpThisItem))
@@ -464,10 +486,26 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
         return true;
     }
+    private List<PickItItemData> GetItemsToPickupFast(bool filterAttempts)
+    {
+        var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels
+            .OrderBy(x => x?.Entity?.DistancePlayer ?? int.MaxValue);
+
+        var firstSuitableItem = labels
+            .Where(x => x.Entity?.Path != null 
+                        && IsLabelClickable(x.Label, x.ClientRect) 
+                        && x.Entity.DistancePlayer < Settings.PickupRange)
+            .Select(x => new PickItItemData(x, GameController))
+            .FirstOrDefault(x => x.Entity != null
+                                 && (!filterAttempts || x.AttemptedPickups == 0)
+                                 && DoWePickThis(x)
+                                 && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x)));
+
+        return firstSuitableItem != null ? [firstSuitableItem] : [];
+    }
 
     private List<PickItItemData> GetItemsToPickup(bool filterAttempts)
     {
-        var window = GameController.Window.GetWindowRectangleTimeCache with { Location = SDxVector2.Zero };
         var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
         return labels?
             .Where(x => x.Entity?.Path != null
