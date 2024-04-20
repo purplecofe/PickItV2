@@ -480,12 +480,11 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     private IEnumerable<PickItItemData> GetItemsToPickup(bool filterAttempts)
     {
         var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels?
-            .OrderBy(x => x?.Entity?.DistancePlayer ?? int.MaxValue);
+            .OrderBy(x => x.Entity?.DistancePlayer ?? int.MaxValue)
+            .TakeWhile(x => x.Entity?.DistancePlayer < Settings.PickupRange);
 
         return labels?
-            .Where(x => x.Entity?.Path != null
-                        && IsLabelClickable(x.Label, x.ClientRect)
-                        && x.Entity.DistancePlayer < Settings.PickupRange)
+            .Where(x => x.Entity?.Path != null && IsLabelClickable(x.Label, x.ClientRect))
             .Select(x => new PickItItemData(x, GameController))
             .Where(x => x.Entity != null
                         && (!filterAttempts || x.AttemptedPickups == 0)
