@@ -87,18 +87,10 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
         if (Input.GetKeyState(Settings.ProfilerHotkey.Value))
         {
-            // keep for juice checking
-            var Stopwatch = new Stopwatch();
-            Stopwatch.Start();
-            var looseVar = GetItemsToPickup(false);
-            Stopwatch.Stop();
-            LogMessage($"GetItemsToPickup Elapsed Time: {Stopwatch.ElapsedTicks} Item: {looseVar[0].BaseName} Distance: {looseVar[0].Distance}");
-
-            Stopwatch = new Stopwatch();
-            Stopwatch.Start();
-            var looseVar2 = GetItemsToPickupFast(false);
-            Stopwatch.Stop();
-            LogMessage($"GetItemsToPickupFast Elapsed Time: {Stopwatch.ElapsedTicks} Item: {looseVar2[0].BaseName} Distance: {looseVar2[0].Distance}");
+            var sw = Stopwatch.StartNew();
+            var looseVar2 = GetItemsToPickup(false).FirstOrDefault();
+            sw.Stop();
+            LogMessage($"GetItemsToPickup Elapsed Time: {sw.ElapsedTicks} Item: {looseVar2?.BaseName} Distance: {looseVar2?.Distance}");
         }
 
         if (Input.GetKeyState(Settings.PickUpKey.Value) || _pluginBridgeModeOverride)
@@ -197,7 +189,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         {
             return entity?.Path is { } path &&
                    (Settings.ClickQuestChests && path.StartsWith("Metadata/Chests/QuestChests/", StringComparison.Ordinal) ||
-                   path.StartsWith("Metadata/Chests/LeaguesExpedition/", StringComparison.Ordinal) ||
+                    path.StartsWith("Metadata/Chests/LeaguesExpedition/", StringComparison.Ordinal) ||
                     path.StartsWith("Metadata/Chests/LegionChests/", StringComparison.Ordinal) ||
                     path.StartsWith("Metadata/Chests/Blight", StringComparison.Ordinal) ||
                     path.StartsWith("Metadata/Chests/Breach/", StringComparison.Ordinal) ||
@@ -442,9 +434,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     {
         if (!GameController.Window.IsForeground()) return true;
 
-        var pickUpThisItem = Settings.InsideOutSearch
-            ? GetItemsToPickupFast(true).MinBy(x => x.Distance)
-            : GetItemsToPickup(true).MinBy(x => x.Distance);
+        var pickUpThisItem = GetItemsToPickup(true).FirstOrDefault();
 
         var workMode = GetWorkMode();
         if (workMode == WorkMode.Manual || workMode == WorkMode.Lazy && ShouldLazyLoot(pickUpThisItem))
@@ -481,32 +471,17 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             }
 
             pickUpThisItem.AttemptedPickups++;
-            await PickAsync(pickUpThisItem.QueriedItem.Entity, pickUpThisItem.QueriedItem.Label, pickUpThisItem.QueriedItem.ClientRect, () => {});
+            await PickAsync(pickUpThisItem.QueriedItem.Entity, pickUpThisItem.QueriedItem.Label, pickUpThisItem.QueriedItem.ClientRect, () => { });
         }
 
         return true;
     }
-    private List<PickItItemData> GetItemsToPickupFast(bool filterAttempts)
+
+    private IEnumerable<PickItItemData> GetItemsToPickup(bool filterAttempts)
     {
-        var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels
+        var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels?
             .OrderBy(x => x?.Entity?.DistancePlayer ?? int.MaxValue);
 
-        var firstSuitableItem = labels
-            .Where(x => x.Entity?.Path != null 
-                        && IsLabelClickable(x.Label, x.ClientRect) 
-                        && x.Entity.DistancePlayer < Settings.PickupRange)
-            .Select(x => new PickItItemData(x, GameController))
-            .FirstOrDefault(x => x.Entity != null
-                                 && (!filterAttempts || x.AttemptedPickups == 0)
-                                 && DoWePickThis(x)
-                                 && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x)));
-
-        return firstSuitableItem != null ? [firstSuitableItem] : [];
-    }
-
-    private List<PickItItemData> GetItemsToPickup(bool filterAttempts)
-    {
-        var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
         return labels?
             .Where(x => x.Entity?.Path != null
                         && IsLabelClickable(x.Label, x.ClientRect)
@@ -515,8 +490,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             .Where(x => x.Entity != null
                         && (!filterAttempts || x.AttemptedPickups == 0)
                         && DoWePickThis(x)
-                        && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x)))
-            .ToList() ?? [];
+                        && (Settings.PickUpWhenInventoryIsFull || CanFitInventory(x))) ?? [];
     }
 
     private async SyncTask<bool> PickAsync(Entity item, Element label, RectangleF? customRect, Action onNonClickable)
@@ -579,8 +553,8 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
     private static bool IsTargeted(Entity item, Element label)
     {
-        if(item == null) return false;
-        if (item.GetComponent<Targetable>()?.isTargeted is {} isTargeted)
+        if (item == null) return false;
+        if (item.GetComponent<Targetable>()?.isTargeted is { } isTargeted)
         {
             return isTargeted;
         }

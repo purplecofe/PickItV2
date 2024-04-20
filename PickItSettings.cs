@@ -12,7 +12,6 @@ public class PickItSettings : ISettings
     public ToggleNode Enable { get; set; } = new ToggleNode(false);
     public ToggleNode ShowInventoryView { get; set; } = new ToggleNode(true);
     public ToggleNode MoveInventoryView { get; set; } = new ToggleNode(false);
-    public ToggleNode InsideOutSearch { get; set; } = new ToggleNode(true);
     public HotkeyNode ProfilerHotkey { get; set; } = Keys.None;
     public HotkeyNode PickUpKey { get; set; } = Keys.F;
     public ToggleNode PickUpWhenInventoryIsFull { get; set; } = new ToggleNode(false);
