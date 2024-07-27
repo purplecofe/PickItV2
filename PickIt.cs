@@ -503,10 +503,13 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                 return true;
             }
 
-            if (GameController.Player.GetComponent<Actor>().isMoving)
+            if (!Settings.IgnoreMoving && GameController.Player.GetComponent<Actor>().isMoving)
             {
-                await TaskUtils.NextFrame();
-                continue;
+                if (item.DistancePlayer > Settings.ItemDistanceToIgnoreMoving.Value)
+                {
+                    await TaskUtils.NextFrame();
+                    continue;
+                }
             }
 
             var position = label.GetClientRect().ClickRandomNum(5, 3) + GameController.Window.GetWindowRectangleTimeCache.TopLeft.ToVector2Num();
