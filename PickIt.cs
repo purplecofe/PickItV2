@@ -123,6 +123,14 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
     public override void Render()
     {
+        if (Settings.DebugHighlight)
+        {
+            foreach (var item in GetItemsToPickup(false))
+            {
+                Graphics.DrawFrame(item.QueriedItem.ClientRect, Color.Violet, 5);
+            }
+        }
+
         if (GetWorkMode() != WorkMode.Stop)
         {
             TaskUtils.RunOrRestart(ref _pickUpTask, RunPickerIterationAsync);
@@ -382,54 +390,6 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         }
     }
 
-    public override void DrawSettings()
-    {
-        base.DrawSettings();
-
-        if (ImGui.Button("Open Build Folder"))
-        {
-            var configDir = ConfigDirectory;
-            var customConfigFileDirectory = !string.IsNullOrEmpty(Settings.CustomConfigDir)
-                ? Path.Combine(Path.GetDirectoryName(ConfigDirectory), Settings.CustomConfigDir)
-                : null;
-
-            var directoryToOpen = Directory.Exists(customConfigFileDirectory)
-                ? customConfigFileDirectory
-                : configDir;
-
-            Process.Start("explorer.exe", directoryToOpen);
-        }
-
-        ImGui.Separator();
-        ImGui.BulletText("Select Rules To Load");
-        ImGui.BulletText("Ordering rule sets so general items will match first rather than last will improve performance");
-
-        var tempNpcInvRules = new List<PickitRule>(Settings.PickitRules); // Create a copy
-
-        for (int i = 0; i < tempNpcInvRules.Count; i++)
-        {
-            ImGui.PushID(i);
-            if (ImGui.ArrowButton("##upButton", ImGuiDir.Up) && i > 0)
-                (tempNpcInvRules[i - 1], tempNpcInvRules[i]) = (tempNpcInvRules[i], tempNpcInvRules[i - 1]);
-
-            ImGui.SameLine();
-            ImGui.Text(" ");
-            ImGui.SameLine();
-
-            if (ImGui.ArrowButton("##downButton", ImGuiDir.Down) && i < tempNpcInvRules.Count - 1)
-                (tempNpcInvRules[i + 1], tempNpcInvRules[i]) = (tempNpcInvRules[i], tempNpcInvRules[i + 1]);
-
-            ImGui.SameLine();
-            ImGui.Text(" - ");
-            ImGui.SameLine();
-
-            ImGui.Checkbox($"{tempNpcInvRules[i].Name}###enabled", ref tempNpcInvRules[i].Enabled);
-            ImGui.PopID();
-        }
-
-        Settings.PickitRules = tempNpcInvRules;
-    }
-
     private async SyncTask<bool> RunPickerIterationAsync()
     {
         if (!GameController.Window.IsForeground()) return true;
@@ -480,8 +440,8 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     private IEnumerable<PickItItemData> GetItemsToPickup(bool filterAttempts)
     {
         var labels = GameController.Game.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels?
-            .OrderBy(x => x.Entity?.DistancePlayer ?? int.MaxValue)
-            .TakeWhile(x => x.Entity?.DistancePlayer < Settings.PickupRange);
+            .Where(x=> x.Entity?.DistancePlayer is {} distance && distance < Settings.PickupRange)
+            .OrderBy(x => x.Entity?.DistancePlayer ?? int.MaxValue);
 
         return labels?
             .Where(x => x.Entity?.Path != null && IsLabelClickable(x.Label, x.ClientRect))
