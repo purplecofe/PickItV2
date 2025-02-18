@@ -33,68 +33,24 @@ public class PickItSettings : ISettings
     [JsonIgnore]
     public TextNode FilterTest { get; set; } = new TextNode();
 
-    [JsonIgnore]
-    public ButtonNode ReloadFilters { get; set; } = new ButtonNode();
-
     [Menu("Use a Custom \"\\config\\custom_folder\" folder ")]
     public TextNode CustomConfigDir { get; set; } = new TextNode();
 
     public List<PickitRule> PickitRules = new List<PickitRule>();
 
     [JsonIgnore]
-    public FilterNode Filters { get; } = new FilterNode();
+    public ToggleNode DebugHighlight { get; set; } = new ToggleNode(false);
 
     [JsonIgnore]
-    public ToggleNode DebugHighlight { get; set; } = new ToggleNode(false);
+    public FilterNode Filters { get; } = new FilterNode();
 }
 
 [Submenu(RenderMethod = nameof(Render))]
 public class FilterNode
 {
-    public void Render(PickIt pickit)
+    public void Render()
     {
-        if (ImGui.Button("Open filter Folder"))
-        {
-            var configDir = pickit.ConfigDirectory;
-            var customConfigFileDirectory = !string.IsNullOrEmpty(pickit.Settings.CustomConfigDir)
-                ? Path.Combine(Path.GetDirectoryName(pickit.ConfigDirectory), pickit.Settings.CustomConfigDir)
-                : null;
-
-            var directoryToOpen = Directory.Exists(customConfigFileDirectory)
-                ? customConfigFileDirectory
-                : configDir;
-
-            Process.Start("explorer.exe", directoryToOpen);
-        }
-
-        ImGui.Separator();
-        ImGui.BulletText("Select Rules To Load");
-        ImGui.BulletText("Ordering rule sets so general items will match first rather than last will improve performance");
-
-        var tempNpcInvRules = new List<PickitRule>(pickit.Settings.PickitRules); // Create a copy
-
-        for (int i = 0; i < tempNpcInvRules.Count; i++)
-        {
-            ImGui.PushID(i);
-            if (ImGui.ArrowButton("##upButton", ImGuiDir.Up) && i > 0)
-                (tempNpcInvRules[i - 1], tempNpcInvRules[i]) = (tempNpcInvRules[i], tempNpcInvRules[i - 1]);
-
-            ImGui.SameLine();
-            ImGui.Text(" ");
-            ImGui.SameLine();
-
-            if (ImGui.ArrowButton("##downButton", ImGuiDir.Down) && i < tempNpcInvRules.Count - 1)
-                (tempNpcInvRules[i + 1], tempNpcInvRules[i]) = (tempNpcInvRules[i], tempNpcInvRules[i + 1]);
-
-            ImGui.SameLine();
-            ImGui.Text(" - ");
-            ImGui.SameLine();
-
-            ImGui.Checkbox($"{tempNpcInvRules[i].Name}###enabled", ref tempNpcInvRules[i].Enabled);
-            ImGui.PopID();
-        }
-
-        pickit.Settings.PickitRules = tempNpcInvRules;
+        RulesDisplay.DrawSettings();
     }
 }
 
