@@ -203,7 +203,8 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                     path.StartsWith("Metadata/Chests/LegionChests/", StringComparison.Ordinal) ||
                     path.StartsWith("Metadata/Chests/Blight", StringComparison.Ordinal) ||
                     path.StartsWith("Metadata/Chests/Breach/", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/IncursionChest", StringComparison.Ordinal)) &&
+                    path.StartsWith("Metadata/Chests/IncursionChest", StringComparison.Ordinal) ||
+                    path.StartsWith("Metadata/Chests/LeagueSanctum/")) &&
                    entity.HasComponent<Chest>();
         }
 
