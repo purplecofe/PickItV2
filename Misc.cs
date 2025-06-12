@@ -40,7 +40,7 @@ public partial class PickIt
 
     private Vector2? FindSpotInventory(int itemHeight, int itemWidth)
     {
-        bool[,] inventorySlots = InventorySlots;
+        var inventorySlots = _inventorySlotsWithItemIds.Value;
         if (inventorySlots == null)
         {
             return null;
@@ -55,7 +55,7 @@ public partial class PickIt
                 for (var xWidth = 0; xWidth < itemWidth && !obstructed; xWidth++)
                 for (var yHeight = 0; yHeight < itemHeight && !obstructed; yHeight++)
                 {
-                    obstructed |= inventorySlots[yCol + yHeight, xRow + xWidth];
+                    obstructed |= inventorySlots[yCol + yHeight, xRow + xWidth] > 0;
                 }
 
                 if (!obstructed) return new Vector2(xRow, yCol);
@@ -87,12 +87,13 @@ public partial class PickIt
         return inventoryItemStackComp.Size + itemStackComp.Size <= inventoryItemStackComp.Info.MaxStackSize;
     }
 
-    private bool[,] GetContainer2DArray(ServerInventory containerItems)
+    private int[,] GetContainer2DArrayWithItemIds(ServerInventory containerItems)
     {
-        var containerCells = new bool[containerItems.Rows, containerItems.Columns];
+        var containerCells = new int[containerItems.Rows, containerItems.Columns];
 
         try
         {
+            var itemId = 1;
             foreach (var item in containerItems.InventorySlotItems)
             {
                 var itemSizeX = item.SizeX;
@@ -105,7 +106,8 @@ public partial class PickIt
                 var endY = Math.Min(containerItems.Rows, inventPosY + itemSizeY);
                 for (var y = startY; y < endY; y++)
                 for (var x = startX; x < endX; x++)
-                    containerCells[y, x] = true;
+                    containerCells[y, x] = itemId;
+                itemId++;
             }
         }
         catch (Exception e)
