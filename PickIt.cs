@@ -422,25 +422,37 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                 }
             }
 
-            var position = label.GetClientRect().ClickRandomNum(5, 3) + GameController.Window.GetWindowRectangleTimeCache.TopLeft.ToVector2Num();
-            if (_sinceLastClick.ElapsedMilliseconds > Settings.PauseBetweenClicks)
+            if (Settings.UseMagicInput)
             {
-                if (!IsTargeted(item, label))
+                if (_sinceLastClick.ElapsedMilliseconds > Settings.PauseBetweenClicks)
                 {
-                    await SetCursorPositionAsync(position, item, label);
-                }
-                else
-                {
-                    if (await CheckPortal(label)) return true;
-                    if (!IsTargeted(item, label))
-                    {
-                        await TaskUtils.NextFrame();
-                        continue;
-                    }
-
-                    Input.Click(MouseButtons.Left);
+                    GameController.PluginBridge.GetMethod<Action<Entity, uint>>("MagicInput.CastSkillWithTarget")(item, 0x400);
                     _sinceLastClick.Restart();
                     tryCount++;
+                }
+            }
+            else
+            {
+                var position = label.GetClientRect().ClickRandomNum(5, 3) + GameController.Window.GetWindowRectangleTimeCache.TopLeft.ToVector2Num();
+                if (_sinceLastClick.ElapsedMilliseconds > Settings.PauseBetweenClicks)
+                {
+                    if (!IsTargeted(item, label))
+                    {
+                        await SetCursorPositionAsync(position, item, label);
+                    }
+                    else
+                    {
+                        if (await CheckPortal(label)) return true;
+                        if (!IsTargeted(item, label))
+                        {
+                            await TaskUtils.NextFrame();
+                            continue;
+                        }
+
+                        Input.Click(MouseButtons.Left);
+                        _sinceLastClick.Restart();
+                        tryCount++;
+                    }
                 }
             }
 

@@ -29,6 +29,7 @@ public class PickItSettings : ISettings
     public ToggleNode ClickChests { get; set; } = new ToggleNode(true);
     public ToggleNode ClickQuestChests { get; set; } = new ToggleNode(true);
     public ToggleNode ItemizeCorpses { get; set; } = new ToggleNode(true);
+    public ToggleNode UseMagicInput { get; set; } = new ToggleNode(false);
 
     [JsonIgnore]
     public TextNode FilterTest { get; set; } = new TextNode();
