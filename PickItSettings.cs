@@ -1,20 +1,18 @@
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Windows.Forms;
 using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
-using ImGuiNET;
 using Newtonsoft.Json;
+using SharpDX;
+using Vector2 = System.Numerics.Vector2;
 
 namespace PickIt;
 
 public class PickItSettings : ISettings
 {
     public ToggleNode Enable { get; set; } = new ToggleNode(false);
-    public ToggleNode ShowInventoryView { get; set; } = new ToggleNode(true);
-    public ToggleNode MoveInventoryView { get; set; } = new ToggleNode(false);
+    public InventoryRender InventoryRender { get; set; } = new InventoryRender();
     public HotkeyNode ProfilerHotkey { get; set; } = Keys.None;
     public HotkeyNode PickUpKey { get; set; } = Keys.F;
     public ToggleNode PickUpWhenInventoryIsFull { get; set; } = new ToggleNode(false);
@@ -53,6 +51,21 @@ public class FilterNode
     {
         RulesDisplay.DrawSettings();
     }
+}
+
+[Submenu(CollapsedByDefault = false)]
+public class InventoryRender
+{
+    public ToggleNode ShowInventoryView { get; set; } = new(true);
+    public RangeNode<Vector2> Position { get; set; } = new(new Vector2(50f, 50f), Vector2.Zero, new Vector2(100f, 100f));
+    public RangeNode<int> BackdropPadding { get; set; } = new(1, 0, 100);
+    public RangeNode<int> CellSize { get; set; } = new(20, 1, 100);
+    public RangeNode<int> CellSpacing { get; set; } = new(1, 0, 100);
+    public RangeNode<int> ItemOutlineWidth { get; set; } = new(1, 0, 100);
+    public ColorNode BackgroundColor { get; set; } = new Color(0, 0, 0, 50);
+    public ColorNode ItemOutlineColor { get; set; } = new Color(255, 255, 255, 255);
+    public ColorNode OccupiedSlotColor { get; set; } = new Color(231, 56, 56, 160);
+    public ColorNode UnoccupiedSlotColor { get; set; } = new Color(130, 250, 130, 81);
 }
 
 public record PickitRule(string Name, string Location, bool Enabled)
