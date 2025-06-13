@@ -29,7 +29,6 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 {
     private readonly CachedValue<List<LabelOnGround>> _chestLabels;
     private readonly CachedValue<LabelOnGround> _portalLabel;
-    private readonly CachedValue<List<LabelOnGround>> _corpseLabels;
     private readonly CachedValue<int[,]> _inventorySlotsWithItemIds;
     private ServerInventory _inventoryItems;
     private SyncTask<bool> _pickUpTask;
@@ -43,7 +42,6 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         Name = "PickIt With Linq";
         _inventorySlotsWithItemIds = new FrameCache<int[,]>(() => GetContainer2DArrayWithItemIds(_inventoryItems));
         _chestLabels = new TimeCache<List<LabelOnGround>>(UpdateChestList, 200);
-        _corpseLabels = new TimeCache<List<LabelOnGround>>(UpdateCorpseList, 200);
         _portalLabel = new TimeCache<LabelOnGround>(() => GetLabel(@"^Metadata/(MiscellaneousObjects|Effects/Microtransactions)/.*Portal"), 200);
     }
 
@@ -130,6 +128,15 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             foreach (var item in GetItemsToPickup(false))
             {
                 Graphics.DrawFrame(item.QueriedItem.ClientRect, Color.Violet, 5);
+            }
+        }
+
+        if ((!_isPickingUp || _pickUpTask == null) && _unclickedMouse)
+        {
+            _unclickedMouse = false;
+            if (!Input.IsKeyDown(Keys.LButton))
+            {
+                Input.LeftDown();
             }
         }
 
@@ -267,26 +274,6 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         return [];
     }
 
-    private List<LabelOnGround> UpdateCorpseList()
-    {
-        bool IsFittingEntity(Entity entity)
-        {
-            return entity?.Path is "Metadata/Terrain/Leagues/Necropolis/Objects/NecropolisCorpseMarker";
-        }
-
-        if (GameController.EntityListWrapper.OnlyValidEntities.Any(IsFittingEntity))
-        {
-            return GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabelsVisible
-                .Where(x => x.Address != 0 &&
-                            x.IsVisible &&
-                            IsFittingEntity(x.ItemOnGround))
-                .OrderBy(x => x.ItemOnGround.DistancePlayer)
-                .ToList() ?? [];
-        }
-
-        return [];
-    }
-
     private bool CanLazyLoot()
     {
         if (!Settings.LazyLooting) return false;
@@ -386,48 +373,45 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         return labelQuery.FirstOrDefault();
     }
 
+    private bool _isPickingUp = false;
+    private bool _unclickedMouse = false;
     private async SyncTask<bool> RunPickerIterationAsync()
     {
-        if (!GameController.Window.IsForeground()) return true;
-
-        var pickUpThisItem = GetItemsToPickup(true).FirstOrDefault();
-
-        var workMode = GetWorkMode();
-        if (workMode == WorkMode.Manual || workMode == WorkMode.Lazy && ShouldLazyLoot(pickUpThisItem))
+        _isPickingUp = false;
+        try
         {
-            if (Settings.ItemizeCorpses)
-            {
-                var corpseLabel = _corpseLabels?.Value.FirstOrDefault(x =>
-                    x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
-                    IsLabelClickable(x.Label, null));
+            if (!GameController.Window.IsForeground()) return true;
 
-                if (corpseLabel != null)
+            var pickUpThisItem = GetItemsToPickup(true).FirstOrDefault();
+
+            var workMode = GetWorkMode();
+            if (workMode == WorkMode.Manual || workMode == WorkMode.Lazy && ShouldLazyLoot(pickUpThisItem))
+            {
+                if (Settings.ClickChests)
                 {
-                    await PickAsync(corpseLabel.ItemOnGround, corpseLabel.Label?.GetChildFromIndices(0, 2, 1), null, _corpseLabels.ForceUpdate);
+                    var chestLabel = _chestLabels?.Value.FirstOrDefault(x =>
+                        x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
+                        IsLabelClickable(x.Label, null));
+
+                    if (chestLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer))
+                    {
+                        await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, _chestLabels.ForceUpdate);
+                        return true;
+                    }
+                }
+
+                if (pickUpThisItem == null)
+                {
                     return true;
                 }
+
+                pickUpThisItem.AttemptedPickups++;
+                await PickAsync(pickUpThisItem.QueriedItem.Entity, pickUpThisItem.QueriedItem.Label, pickUpThisItem.QueriedItem.ClientRect, () => { });
             }
-
-            if (Settings.ClickChests)
-            {
-                var chestLabel = _chestLabels?.Value.FirstOrDefault(x =>
-                    x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
-                    IsLabelClickable(x.Label, null));
-
-                if (chestLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer))
-                {
-                    await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, _chestLabels.ForceUpdate);
-                    return true;
-                }
-            }
-
-            if (pickUpThisItem == null)
-            {
-                return true;
-            }
-
-            pickUpThisItem.AttemptedPickups++;
-            await PickAsync(pickUpThisItem.QueriedItem.Entity, pickUpThisItem.QueriedItem.Label, pickUpThisItem.QueriedItem.ClientRect, () => { });
+        }
+        finally
+        {
+            _isPickingUp = false;
         }
 
         return true;
@@ -450,6 +434,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
     private async SyncTask<bool> PickAsync(Entity item, Element label, RectangleF? customRect, Action onNonClickable)
     {
+        _isPickingUp = true;
         var tryCount = 0;
         while (tryCount < 3)
         {
@@ -470,6 +455,12 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
             if (Settings.UseMagicInput)
             {
+                if (Settings.UnclickLeftMouseButton && Input.IsKeyDown(Keys.LButton))
+                {
+                    _unclickedMouse = true;
+                    Input.LeftUp();
+                }
+
                 if (_sinceLastClick.ElapsedMilliseconds > Settings.PauseBetweenClicks)
                 {
                     GameController.PluginBridge.GetMethod<Action<Entity, uint>>("MagicInput.CastSkillWithTarget")(item, 0x400);
