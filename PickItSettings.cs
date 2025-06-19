@@ -57,6 +57,11 @@ public class FilterNode
 public class InventoryRender
 {
     public ToggleNode ShowInventoryView { get; set; } = new(true);
+    public ToggleNode IgnoreFullscreenPanels { get; set; } = new ToggleNode(false);
+    public ToggleNode IgnoreLargePanels { get; set; } = new ToggleNode(true);
+    public ToggleNode IgnoreChatPanel { get; set; } = new ToggleNode(false);
+    public ToggleNode IgnoreLeftPanel { get; set; } = new ToggleNode(true);
+    public ToggleNode IgnoreRightPanel { get; set; } = new ToggleNode(true);
     public RangeNode<Vector2> Position { get; set; } = new(new Vector2(50f, 50f), Vector2.Zero, new Vector2(100f, 100f));
     public RangeNode<int> BackdropPadding { get; set; } = new(1, 0, 100);
     public RangeNode<int> CellSize { get; set; } = new(20, 1, 100);

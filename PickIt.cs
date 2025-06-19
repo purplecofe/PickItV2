@@ -121,7 +121,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
     public override void Render()
     {
-        DrawIgnoredCellsSettings();
+        DrawInventoryCells();
 
         if (Settings.DebugHighlight)
         {
@@ -159,9 +159,25 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         }
     }
 
-    private void DrawIgnoredCellsSettings()
+    private void DrawInventoryCells()
     {
         if (!Settings.InventoryRender.ShowInventoryView.Value)
+            return;
+
+        var ingameUi = GameController.Game.IngameState.IngameUi;
+        if (!Settings.InventoryRender.IgnoreFullscreenPanels && ingameUi.FullscreenPanels.Any(x => x.IsVisible))
+            return;
+
+        if (!Settings.InventoryRender.IgnoreLargePanels && ingameUi.LargePanels.Any(x => x.IsVisible))
+            return;
+
+        if (!Settings.InventoryRender.IgnoreChatPanel && ingameUi.ChatTitlePanel.IsVisible)
+            return;
+
+        if (!Settings.InventoryRender.IgnoreLeftPanel && ingameUi.OpenLeftPanel.IsVisible)
+            return;
+
+        if (!Settings.InventoryRender.IgnoreRightPanel && ingameUi.OpenRightPanel.IsVisible)
             return;
 
         var windowSize = GameController.Window.GetWindowRectangleTimeCache;
