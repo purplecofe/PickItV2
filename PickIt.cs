@@ -409,10 +409,20 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                         x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
                         IsLabelClickable(x.Label, null));
 
-                    if (chestLabel != null && (pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer))
+                    if (chestLabel != null)
                     {
-                        await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, _chestLabels.ForceUpdate);
-                        return true;
+                        var shouldPickChest = Settings.TargetChestsFirst && chestLabel.ItemOnGround.DistancePlayer < Settings.TargetChestsFirstRadius;
+
+                        if (!shouldPickChest)
+                        {
+                            shouldPickChest = pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer;
+                        }
+
+                        if (shouldPickChest)
+                        {
+                            await PickAsync(chestLabel.ItemOnGround, chestLabel.Label, null, _chestLabels.ForceUpdate);
+                            return true;
+                        }
                     }
                 }
 

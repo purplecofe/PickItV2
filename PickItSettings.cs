@@ -25,6 +25,10 @@ public class PickItSettings : ISettings
     public HotkeyNode LazyLootingPauseKey { get; set; } = new HotkeyNode(Keys.Space);
     public ToggleNode PickUpEverything { get; set; } = new ToggleNode(false);
     public ToggleNode ClickChests { get; set; } = new ToggleNode(true);
+    [ConditionalDisplay(nameof(ClickChests))]
+    public ToggleNode TargetChestsFirst { get; set; } = new ToggleNode(true);
+    [ConditionalDisplay(nameof(TargetChestsFirst))]
+    public RangeNode<int> TargetChestsFirstRadius { get; set; } = new RangeNode<int>(12, 1, 200);
     public ToggleNode ClickQuestChests { get; set; } = new ToggleNode(true);
     public ToggleNode UseMagicInput { get; set; } = new ToggleNode(false);
     public ToggleNode UnclickLeftMouseButton { get; set; } = new ToggleNode(true);
