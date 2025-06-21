@@ -77,7 +77,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
             foreach (var pattern in defaultChestPatterns)
             {
-                Settings.ChestSettings.ChestList.Content.Add(new ChestList { MetadataRegex = new TextNode(pattern) });
+                Settings.ChestSettings.ChestList.Content.Add(new ChestList { Enabled = new ToggleNode(true), MetadataRegex = new TextNode(pattern) });
             }
         }
 
@@ -288,7 +288,8 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         bool IsFittingEntity(Entity entity)
         {
             return Settings.ChestSettings.ChestList.Content.FirstOrDefault(
-                    x => !string.IsNullOrEmpty(x.MetadataRegex?.Value) &&
+                    x => x.Enabled?.Value == true &&
+                        !string.IsNullOrEmpty(x.MetadataRegex?.Value) &&
                         _regexes.GetValue(x.MetadataRegex.Value, p => new Regex(p))!.IsMatch(entity.Metadata)) !=
                 null && entity.HasComponent<Chest>();
         }

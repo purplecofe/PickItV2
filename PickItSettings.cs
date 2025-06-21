@@ -46,6 +46,7 @@ public class PickItSettings : ISettings
 [Submenu(CollapsedByDefault = false)]
 public class ChestList
 {
+    public ToggleNode Enabled { get; set; } = new ToggleNode(true);
     public TextNode MetadataRegex { get; set; } = new("^$");
 }
 
