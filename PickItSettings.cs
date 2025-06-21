@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using ExileCore.Shared.Attributes;
 using ExileCore.Shared.Interfaces;
@@ -44,22 +45,42 @@ public class PickItSettings : ISettings
 }
 
 [Submenu(CollapsedByDefault = false)]
-public class ChestList
+public class ChestPattern
 {
     public ToggleNode Enabled { get; set; } = new ToggleNode(true);
     public TextNode MetadataRegex { get; set; } = new("^$");
+
+    public override string ToString()
+    {
+        return $"{MetadataRegex.Value}###{base.ToString()}";
+    }
 }
 
 [Submenu(CollapsedByDefault = true)]
 public class ChestSettings
 {
     public ToggleNode ClickChests { get; set; } = new ToggleNode(true);
+
     [ConditionalDisplay(nameof(ClickChests))]
-    public ToggleNode TargetChestsFirst { get; set; } = new ToggleNode(true);
+    public ToggleNode TargetNearbyChestsFirst { get; set; } = new ToggleNode(true);
+
     [ConditionalDisplay(nameof(ClickChests))]
-    public RangeNode<int> TargetChestsFirstRadius { get; set; } = new RangeNode<int>(12, 1, 200);
+    public RangeNode<int> TargetNearbyChestsFirstRadius { get; set; } = new RangeNode<int>(12, 1, 200);
+
     [ConditionalDisplay(nameof(ClickChests))]
-    public ContentNode<ChestList> ChestList { get; set; } = new() { ItemFactory = () => new ChestList() };
+    public ContentNode<ChestPattern> ChestList { get; set; } = new()
+    {
+        ItemFactory = () => new ChestPattern(), Content = new[]
+        {
+            "^Metadata/Chests/QuestChests/",
+            "^Metadata/Chests/LeaguesExpedition/",
+            "^Metadata/Chests/LegionChests/",
+            "^Metadata/Chests/Blight",
+            "^Metadata/Chests/Breach/",
+            "^Metadata/Chests/IncursionChest",
+            "^Metadata/Chests/LeagueSanctum/"
+        }.Select(x => new ChestPattern() { Enabled = new ToggleNode(true), MetadataRegex = new TextNode(x) }).ToList()
+    };
 }
 
 [Submenu(RenderMethod = nameof(Render))]

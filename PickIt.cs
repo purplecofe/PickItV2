@@ -17,7 +17,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ExileCore.PoEMemory;
-using ExileCore.Shared.Nodes;
 using SharpDX;
 using SDxVector2 = SharpDX.Vector2;
 using Vector2 = System.Numerics.Vector2;
@@ -60,27 +59,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         Input.RegisterKey(Keys.Escape);
 
         #endregion
-
-        // Initialize default chest patterns if the list is empty
-        if (Settings.ChestSettings.ChestList.Content.Count == 0)
-        {
-            var defaultChestPatterns = new[]
-            {
-                "^Metadata/Chests/QuestChests/",
-                "^Metadata/Chests/LeaguesExpedition/",
-                "^Metadata/Chests/LegionChests/",
-                "^Metadata/Chests/Blight",
-                "^Metadata/Chests/Breach/",
-                "^Metadata/Chests/IncursionChest",
-                "^Metadata/Chests/LeagueSanctum/"
-            };
-
-            foreach (var pattern in defaultChestPatterns)
-            {
-                Settings.ChestSettings.ChestList.Content.Add(new ChestList { Enabled = new ToggleNode(true), MetadataRegex = new TextNode(pattern) });
-            }
-        }
-
+        
         Task.Run(RulesDisplay.LoadAndApplyRules);
         GameController.PluginBridge.SaveMethod("PickIt.ListItems", () => GetItemsToPickup(false).Select(x => x.QueriedItem).ToList());
         GameController.PluginBridge.SaveMethod("PickIt.IsActive", () => _pickUpTask?.GetAwaiter().IsCompleted == false);
@@ -182,23 +161,24 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
     private void DrawInventoryCells()
     {
-        if (!Settings.InventoryRender.ShowInventoryView.Value)
+        var settings = Settings.InventoryRender;
+        if (!settings.ShowInventoryView.Value)
             return;
 
         var ingameUi = GameController.Game.IngameState.IngameUi;
-        if (!Settings.InventoryRender.IgnoreFullscreenPanels && ingameUi.FullscreenPanels.Any(x => x.IsVisible))
+        if (!settings.IgnoreFullscreenPanels && ingameUi.FullscreenPanels.Any(x => x.IsVisible))
             return;
 
-        if (!Settings.InventoryRender.IgnoreLargePanels && ingameUi.LargePanels.Any(x => x.IsVisible))
+        if (!settings.IgnoreLargePanels && ingameUi.LargePanels.Any(x => x.IsVisible))
             return;
 
-        if (!Settings.InventoryRender.IgnoreChatPanel && ingameUi.ChatTitlePanel.IsVisible)
+        if (!settings.IgnoreChatPanel && ingameUi.ChatTitlePanel.IsVisible)
             return;
 
-        if (!Settings.InventoryRender.IgnoreLeftPanel && ingameUi.OpenLeftPanel.IsVisible)
+        if (!settings.IgnoreLeftPanel && ingameUi.OpenLeftPanel.IsVisible)
             return;
 
-        if (!Settings.InventoryRender.IgnoreRightPanel && ingameUi.OpenRightPanel.IsVisible)
+        if (!settings.IgnoreRightPanel && ingameUi.OpenRightPanel.IsVisible)
             return;
 
         var windowSize = GameController.Window.GetWindowRectangleTimeCache;
@@ -206,13 +186,13 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         if (inventoryItemIds == null)
             return;
 
-        var viewTopLeftX = (int)(windowSize.Width * (Settings.InventoryRender.Position.Value.X / 100f));
-        var viewTopLeftY = (int)(windowSize.Height * (Settings.InventoryRender.Position.Value.Y / 100f));
+        var viewTopLeftX = (int)(windowSize.Width * (settings.Position.Value.X / 100f));
+        var viewTopLeftY = (int)(windowSize.Height * (settings.Position.Value.Y / 100f));
 
-        var cellSize = Settings.InventoryRender.CellSize;
-        var cellSpacing = Settings.InventoryRender.CellSpacing;
-        var outlineWidth = Settings.InventoryRender.ItemOutlineWidth;
-        var backerPadding = Settings.InventoryRender.BackdropPadding;
+        var cellSize = settings.CellSize;
+        var cellSpacing = settings.CellSpacing;
+        var outlineWidth = settings.ItemOutlineWidth;
+        var backerPadding = settings.BackdropPadding;
 
         var inventoryRows = inventoryItemIds.GetLength(0);
         var inventoryCols = inventoryItemIds.GetLength(1);
@@ -220,14 +200,14 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         var gridHeight = inventoryRows * (cellSize + cellSpacing) - cellSpacing;
         var backerRect = new RectangleF(
             viewTopLeftX - backerPadding, viewTopLeftY - backerPadding, gridWidth + backerPadding * 2, gridHeight + backerPadding * 2);
-        Graphics.DrawBox(backerRect, Settings.InventoryRender.BackgroundColor.Value);
+        Graphics.DrawBox(backerRect, settings.BackgroundColor.Value);
 
         var itemBounds = new Dictionary<int, (int MinX, int MinY, int MaxX, int MaxY)>();
         for (var y = 0; y < inventoryRows; y++)
         for (var x = 0; x < inventoryCols; x++)
         {
             var isOccupied = inventoryItemIds[y, x] > 0;
-            var cellColor = isOccupied ? Settings.InventoryRender.OccupiedSlotColor.Value : Settings.InventoryRender.UnoccupiedSlotColor.Value;
+            var cellColor = isOccupied ? settings.OccupiedSlotColor.Value : settings.UnoccupiedSlotColor.Value;
             var cellX = viewTopLeftX + x * (cellSize + cellSpacing);
             var cellY = viewTopLeftY + y * (cellSize + cellSpacing);
             var cellRect = new RectangleF(cellX, cellY, cellSize, cellSize);
@@ -258,7 +238,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             var itemAreaHeight = (maxY - minY + 1) * (cellSize + cellSpacing) - cellSpacing;
 
             var outerRect = new RectangleF(itemAreaX, itemAreaY, itemAreaWidth, itemAreaHeight);
-            DrawFrameInside(outerRect, outlineWidth, Settings.InventoryRender.ItemOutlineColor.Value);
+            DrawFrameInside(outerRect, outlineWidth, settings.ItemOutlineColor.Value);
         }
 
         return;
@@ -287,11 +267,11 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     {
         bool IsFittingEntity(Entity entity)
         {
-            return Settings.ChestSettings.ChestList.Content.FirstOrDefault(
+            return Settings.ChestSettings.ChestList.Content.Any(
                     x => x.Enabled?.Value == true &&
                         !string.IsNullOrEmpty(x.MetadataRegex?.Value) &&
-                        _regexes.GetValue(x.MetadataRegex.Value, p => new Regex(p))!.IsMatch(entity.Metadata)) !=
-                null && entity.HasComponent<Chest>();
+                        _regexes.GetValue(x.MetadataRegex.Value, p => new Regex(p))!.IsMatch(entity.Metadata))
+                   && entity.HasComponent<Chest>();
         }
 
         if (GameController.EntityListWrapper.OnlyValidEntities.Any(IsFittingEntity))
@@ -428,12 +408,9 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
                     if (chestLabel != null)
                     {
-                        var shouldPickChest = Settings.ChestSettings.TargetChestsFirst && chestLabel.ItemOnGround.DistancePlayer < Settings.ChestSettings.TargetChestsFirstRadius;
-
-                        if (!shouldPickChest)
-                        {
-                            shouldPickChest = pickUpThisItem == null || pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer;
-                        }
+                        var shouldPickChest = pickUpThisItem == null ||
+                                              Settings.ChestSettings.TargetNearbyChestsFirst && chestLabel.ItemOnGround.DistancePlayer < Settings.ChestSettings.TargetNearbyChestsFirstRadius || 
+                                              pickUpThisItem.Distance >= chestLabel.ItemOnGround.DistancePlayer;
 
                         if (shouldPickChest)
                         {
