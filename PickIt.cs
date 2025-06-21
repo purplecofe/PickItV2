@@ -6,18 +6,18 @@ using ExileCore.Shared;
 using ExileCore.Shared.Cache;
 using ExileCore.Shared.Enums;
 using ExileCore.Shared.Helpers;
-using ImGuiNET;
 using ItemFilterLibrary;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ExileCore.PoEMemory;
+using ExileCore.Shared.Nodes;
 using SharpDX;
 using SDxVector2 = SharpDX.Vector2;
 using Vector2 = System.Numerics.Vector2;
@@ -36,6 +36,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     private bool _pluginBridgeModeOverride;
     public static PickIt Main;
     private readonly Stopwatch _sinceLastClick = Stopwatch.StartNew();
+    private readonly ConditionalWeakTable<string, Regex> _regexes = [];
 
     public PickIt()
     {
@@ -59,6 +60,26 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
         Input.RegisterKey(Keys.Escape);
 
         #endregion
+
+        // Initialize default chest patterns if the list is empty
+        if (Settings.ChestSettings.ChestList.Content.Count == 0)
+        {
+            var defaultChestPatterns = new[]
+            {
+                "^Metadata/Chests/QuestChests/",
+                "^Metadata/Chests/LeaguesExpedition/",
+                "^Metadata/Chests/LegionChests/",
+                "^Metadata/Chests/Blight",
+                "^Metadata/Chests/Breach/",
+                "^Metadata/Chests/IncursionChest",
+                "^Metadata/Chests/LeagueSanctum/"
+            };
+
+            foreach (var pattern in defaultChestPatterns)
+            {
+                Settings.ChestSettings.ChestList.Content.Add(new ChestList { MetadataRegex = new TextNode(pattern) });
+            }
+        }
 
         Task.Run(RulesDisplay.LoadAndApplyRules);
         GameController.PluginBridge.SaveMethod("PickIt.ListItems", () => GetItemsToPickup(false).Select(x => x.QueriedItem).ToList());
@@ -266,15 +287,10 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
     {
         bool IsFittingEntity(Entity entity)
         {
-            return entity?.Path is { } path &&
-                   (Settings.ClickQuestChests && path.StartsWith("Metadata/Chests/QuestChests/", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/LeaguesExpedition/", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/LegionChests/", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/Blight", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/Breach/", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/IncursionChest", StringComparison.Ordinal) ||
-                    path.StartsWith("Metadata/Chests/LeagueSanctum/")) &&
-                   entity.HasComponent<Chest>();
+            return Settings.ChestSettings.ChestList.Content.FirstOrDefault(
+                    x => !string.IsNullOrEmpty(x.MetadataRegex?.Value) &&
+                        _regexes.GetValue(x.MetadataRegex.Value, p => new Regex(p))!.IsMatch(entity.Metadata)) !=
+                null && entity.HasComponent<Chest>();
         }
 
         if (GameController.EntityListWrapper.OnlyValidEntities.Any(IsFittingEntity))
@@ -403,7 +419,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             var workMode = GetWorkMode();
             if (workMode == WorkMode.Manual || workMode == WorkMode.Lazy && ShouldLazyLoot(pickUpThisItem))
             {
-                if (Settings.ClickChests)
+                if (Settings.ChestSettings.ClickChests)
                 {
                     var chestLabel = _chestLabels?.Value.FirstOrDefault(x =>
                         x.ItemOnGround.DistancePlayer < Settings.PickupRange &&
@@ -411,7 +427,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
                     if (chestLabel != null)
                     {
-                        var shouldPickChest = Settings.TargetChestsFirst && chestLabel.ItemOnGround.DistancePlayer < Settings.TargetChestsFirstRadius;
+                        var shouldPickChest = Settings.ChestSettings.TargetChestsFirst && chestLabel.ItemOnGround.DistancePlayer < Settings.ChestSettings.TargetChestsFirstRadius;
 
                         if (!shouldPickChest)
                         {
