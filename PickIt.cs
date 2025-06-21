@@ -270,6 +270,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
             return Settings.ChestSettings.ChestList.Content.Any(
                     x => x.Enabled?.Value == true &&
                         !string.IsNullOrEmpty(x.MetadataRegex?.Value) &&
+                        !string.IsNullOrEmpty(entity.Metadata) &&
                         _regexes.GetValue(x.MetadataRegex.Value, p => new Regex(p))!.IsMatch(entity.Metadata))
                    && entity.HasComponent<Chest>();
         }
