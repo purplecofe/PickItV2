@@ -484,9 +484,19 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
 
                 if (_sinceLastClick.ElapsedMilliseconds > Settings.PauseBetweenClicks)
                 {
-                    GameController.PluginBridge.GetMethod<Action<Entity, uint>>("MagicInput.CastSkillWithTarget")(item, 0x400);
-                    _sinceLastClick.Restart();
-                    tryCount++;
+                    var magicInputMethod = GameController.PluginBridge.GetMethod<Action<Entity, uint>>("MagicInput.CastSkillWithTarget");
+                    if (magicInputMethod != null)
+                    {
+                        magicInputMethod(item, 0x400);
+                        _sinceLastClick.Restart();
+                        tryCount++;
+                    }
+                    else
+                    {
+                        LogError("MagicInput plugin not found or method not available. Disabling MagicInput.", 5);
+                        Settings.UseMagicInput.Value = false;
+                        return;
+                    }
                 }
             }
             else
