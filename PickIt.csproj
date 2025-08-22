@@ -9,18 +9,11 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ExileCore" Condition="Exists('/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ExileCore.dll')">
-      <HintPath>/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ExileCore.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ExileCore" Condition="!Exists('/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ExileCore.dll')">
+    <Reference Include="ExileCore">
       <HintPath>..\..\ExileCore.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="ItemFilterLibrary" Condition="Exists('/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ItemFilterLibrary.dll')">
-      <HintPath>/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ItemFilterLibrary.dll</HintPath>
-    </Reference>
-    <Reference Include="ItemFilterLibrary" Condition="!Exists('/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ItemFilterLibrary.dll')">
+    <Reference Include="ItemFilterLibrary">
       <HintPath>..\..\ItemFilterLibrary.dll</HintPath>
     </Reference>
   </ItemGroup>
