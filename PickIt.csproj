@@ -6,14 +6,15 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <PlatformTarget>x64</PlatformTarget>
     <EnableDynamicLoading>true</EnableDynamicLoading>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ExileCore">
-      <HintPath>$(exapiPackage)\ExileCore.dll</HintPath>
+      <HintPath>/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ExileCore.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="ItemFilterLibrary">
-      <HintPath>$(exapiPackage)\ItemFilterLibrary.dll</HintPath>
+      <HintPath>/Users/chongkaihuang/Downloads/ExileApi-Compiled-master/ItemFilterLibrary.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

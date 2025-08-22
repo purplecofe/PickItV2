@@ -15,6 +15,13 @@ public class RulesDisplay
 {
     public static void DrawSettings()
     {
+        // 檢查 Main 是否已初始化
+        if (Main == null)
+        {
+            ImGui.Text("正在載入插件...");
+            return;
+        }
+
         ImGui.Separator();
         if (ImGui.Button("Open Filter Folder"))
         {
@@ -44,10 +51,6 @@ public class RulesDisplay
             ImGui.TableSetupColumn("Toggle", ImGuiTableColumnFlags.WidthFixed, 50);
             ImGui.TableSetupColumn("File", ImGuiTableColumnFlags.None);
             ImGui.TableHeadersRow();
-
-            var reorderPending = false;
-            var pendingSrcIndex = -1;
-            var pendingNewIndex = -1;
 
             var rules = Main.Settings.PickitRules;
             for (var i = 0; i < rules.Count; i++)
@@ -170,6 +173,9 @@ public class RulesDisplay
     }
     private static string GetPickitConfigFileDirectory()
     {
+        if (Main == null)
+            return string.Empty;
+
         var pickitConfigFileDirectory = Main.ConfigDirectory;
         if (!string.IsNullOrEmpty(Main.Settings.CustomConfigDir))
         {
@@ -204,7 +210,13 @@ public class RulesDisplay
 
     public static void LoadAndApplyRules()
     {
+        if (Main == null)
+            return;
+
         var pickitConfigFileDirectory = GetPickitConfigFileDirectory();
+        if (string.IsNullOrEmpty(pickitConfigFileDirectory))
+            return;
+
         var existingRules = Main.Settings.PickitRules;
         try
         {
