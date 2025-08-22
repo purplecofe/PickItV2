@@ -495,7 +495,7 @@ public partial class PickIt : BaseSettingsPlugin<PickItSettings>
                     {
                         LogError("MagicInput plugin not found or method not available. Disabling MagicInput.", 5);
                         Settings.UseMagicInput.Value = false;
-                        return;
+                        return false;
                     }
                 }
             }
