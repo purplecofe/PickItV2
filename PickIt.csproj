@@ -9,12 +9,13 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
+    <!--Rather than replacing this with absolute or relative paths, you should create an environment variable for wherever your HUD folder is-->
     <Reference Include="ExileCore">
-      <HintPath>..\..\ExileCore.dll</HintPath>
+      <HintPath>$(exapiPackage)\ExileCore.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="ItemFilterLibrary">
-      <HintPath>..\..\ItemFilterLibrary.dll</HintPath>
+      <HintPath>$(exapiPackage)\ItemFilterLibrary.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

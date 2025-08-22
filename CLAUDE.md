@@ -8,6 +8,10 @@ PickIt is a C# plugin for Path of Exile that automatically picks up items based 
 
 ## Build Commands
 
+**Prerequisites:**
+- Set `exapiPackage` environment variable pointing to ExileCore installation directory
+- .NET 8.0 SDK or Visual Studio 2022
+
 ```bash
 # Build the project
 dotnet build PickIt.sln
@@ -17,6 +21,18 @@ dotnet build PickIt.sln -c Release -p:Platform=x64
 
 # Build for debug
 dotnet build PickIt.sln -c Debug
+```
+
+**Environment Variable Setup:**
+```bash
+# Windows (set permanently)
+setx exapiPackage "C:\Users\user\Downloads\ExileApi-Compiled-3.26.last"
+
+# Windows (current session only)
+set exapiPackage=C:\Users\user\Downloads\ExileApi-Compiled-3.26.last
+
+# macOS/Linux (for development)
+export exapiPackage="/Users/chongkaihuang/Downloads/ExileApi-Compiled-master"
 ```
 
 ## Architecture
